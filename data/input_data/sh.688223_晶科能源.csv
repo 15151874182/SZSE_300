@@ -1,0 +1,1 @@
+date,open,high,low,close,preclose,volume,amount,return,return_1d,return_2d,return_5d,return_7d,return_10d,momentum_1d,momentum_2d,momentum_5d,momentum_7d,momentum_10d,DayOfWeek,DayOfMonth,DayOfYear,SMA_5d,SMA_7d,SMA_10d,SMA_20d,SMA_30d,EMA_5d,EMA_7d,EMA_10d,EMA_20d,EMA_30d,rsi,MACD,Signal_Line,cci,oi,ci,ui,di,Vyz,H-L,H-PC,L-PC,TR,ATR,OBV,VWMA,upper_band,lower_band,y
