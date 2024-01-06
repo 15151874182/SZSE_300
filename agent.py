@@ -12,8 +12,28 @@ class Agent():
     
     def __init__(self):
         self.seq_len=30 ##月频
+
+    ## 下载沪深300指数，并保存
+    def download_300(self,save_dir,start_date,end_date,frequency):
+        # 登录Baostock系统
+        lg = bs.login()        
+        # 获取沪深300指数的历史K线数据
+        stock_code = "sh.000300"  # 沪深300指数的代码
+        rs = bs.query_history_k_data(stock_code, "date,open,high,low,close,preclose,volume,amount,pctChg", start_date=start_date, end_date=end_date, frequency=frequency)
+        data_list = []
+        while (rs.error_code == '0') & rs.next():
+            data_list.append(rs.get_row_data())
+        
+        # 生成DataFrame并保存为CSV文件
+        df = pd.DataFrame(data_list, columns=rs.fields)
+        file_name="300.csv"
+        file_path = os.path.join(save_dir, file_name)
+        df.to_csv(file_path, index=False)   
+        
+        # 登出Baostock系统
+        bs.logout()
     
-    ## 下载沪深300原始data，并分开保存
+    ## 下载沪深300成分股，并分开保存
     def download_data(self,save_dir,start_date,end_date,frequency):
         # 登录Baostock系统
         lg = bs.login()
@@ -163,3 +183,17 @@ class Agent():
         return x_train, x_val, x_test, y_train, y_val, y_test
 
 
+    def get_res(self,pred,gt):
+        date_index=gt.index
+        pred=np.array(pred).reshape(-1)
+        gt=np.array(gt).reshape(-1)
+        res=pd.DataFrame(index=date_index)
+        res['pred'],res['gt']=pred,gt
+        return res
+
+    def eval_res(self,res):
+        ## res(DataFrame) must at least have 'gt' and 'pred' cols
+        from copy import deepcopy 
+        df=deepcopy(res)                            
+        error=abs((df['pred']/100+1).prod()-(df['gt']/100+1).prod()) ##return 0.6表示 0.6%，所以要/100
+        return error/len(df)

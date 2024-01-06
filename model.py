@@ -2,6 +2,7 @@
 import pandas as pd
 import warnings
 import os
+import joblib    
 warnings.filterwarnings('ignore') 
 
 import lightgbm as lgb
@@ -20,7 +21,7 @@ class MyLGB():
         model.fit(x_train,
                   y_train,
                   eval_set=[(x_val, y_val)],
-                  callbacks=callbacks
+                  # callbacks=callbacks
                   )
         return model
     
@@ -30,9 +31,13 @@ class MyLGB():
         return y_pred
 
     def save(self, model,model_path):
-        # model_save===========================================================  
-        import joblib          
+        # model_save===========================================================        
         joblib.dump(model, model_path)
+        
+    def load(self, model_path):
+        # model load===========================================================    
+        best_model = joblib.load(model_path)
+        return best_model
         
     def finetune(self, config, x_train,y_train,x_val,y_val, n_trials=100):
 
