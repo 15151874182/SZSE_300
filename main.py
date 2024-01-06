@@ -116,7 +116,6 @@ agent=Agent()
 # hs300_stocks=os.listdir('./data/input_data/')
 # my_stocks=pd.read_csv('data/my_stocks.csv')
 # bad_stock=pd.read_csv('data/bad_stock.csv')
-# index300=pd.read_csv('data/300.csv')
 # available_test_date=pd.read_csv('data/available_test_date.csv')
 # available_test_date.index=available_test_date['date']
 # testdata=[]
@@ -141,8 +140,14 @@ file_path = 'data/testdata.pkl'# 加载以 .pkl 格式保存的文件
 with open(file_path, 'rb') as file:
     testdata = pickle.load(file)
 intervals=len(testdata[0][1])//agent.seq_len
+pred_date=testdata[0][1].index[agent.seq_len:] ##这里有180天可以和沪深300指数对比
+index300=pd.read_csv('data/300.csv',index_col=0,parse_dates=True)
+index300 = index300.loc[pred_date[0]:pred_date[-1]]
+# 计算累积乘积
+index300['cumulative_product'] = (index300['pctChg']/100+1).cumprod()
 
-for i in tqdm(range(intervals)-1):
+portfolio_value_total=[]
+for i in tqdm(range(intervals-1)):
     factors=[] ##模型预测结果可以看成综合因子
     for stock,x_test in testdata:
         x_test=x_test.iloc[i*agent.seq_len:(i+1)*agent.seq_len]
@@ -151,6 +156,53 @@ for i in tqdm(range(intervals)-1):
         y_pred=mylgb.predict(best_model, x_test)       
         factors.append([stock,(y_pred['pred']/100+1).prod()])
     factors.sort(key=lambda x:x[1],reverse=True) ##按同一时间段，池子里的股票综合因子从高到低排序
-    
-        
+    top5=factors[:5]
+    # bottom5=factors[-5:]
+    # 计算投资组合收益率
+    portfolio_value = []
+    for item in top5:
+        data=pd.read_csv(os.path.join(root,'data/input_data',item[0]),index_col=0,parse_dates=True)
+        start_date=pred_date[i*agent.seq_len]
+        end_date=pred_date[(i+1)*agent.seq_len-1]
+        data = data.loc[start_date:end_date]
+        data['cumulative_product'] = (data['return']/100+1).cumprod()
+        portfolio_value.append(data['cumulative_product'])
+    portfolio_value=sum(portfolio_value)/5
+    portfolio_value_total.append(portfolio_value)
+
+##连续时间段return拼接
+length=len(portfolio_value_total)
+for i in range(length):
+    tail_coe=portfolio_value_total[i][-1]
+    if i+1<=length-1:
+        portfolio_value_total[i+1]*=tail_coe
+
+portfolio_value_total = pd.concat(portfolio_value_total, axis=0)
+
+res=pd.concat([portfolio_value_total,index300['cumulative_product']], axis=1)
+res.columns=['portfolio_value','baseline-300']
+
+# 绘制折线图
+plt.figure(figsize=(20, 8))
+
+# 绘制 portfolio_value 列的折线
+plt.plot(res.index, res['portfolio_value'], label='Portfolio Value')
+
+# 绘制 baseline-300 列的折线
+plt.plot(res.index, res['baseline-300'], label='Baseline-300')
+
+# 设置图例和标签
+plt.legend()
+plt.xlabel('Date')
+plt.ylabel('Value')
+plt.title('Portfolio Value vs Baseline-300')
+plt.xticks(rotation=45)  # 旋转x轴标签，以便更好地显示日期
+
+# 显示图形
+plt.tight_layout()
+plt.show()
+
+
+
+
 
